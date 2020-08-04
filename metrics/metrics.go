@@ -1,0 +1,114 @@
+package metrics
+
+import (
+	"time"
+
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
+	"go.opencensus.io/tag"
+
+	rpcmetrics "github.com/filecoin-project/go-jsonrpc/metrics"
+)
+
+// Distribution
+var defaultMillisecondsDistribution = view.Distribution(0.01, 0.05, 0.1, 0.3, 0.6, 0.8, 1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 5000, 10000, 20000, 50000, 100000)
+
+// Global Tags
+var (
+	Version, _      = tag.NewKey("version")
+	Commit, _       = tag.NewKey("commit")
+	PeerID, _       = tag.NewKey("peer_id")
+	FailureType, _  = tag.NewKey("failure_type")
+	MessageFrom, _  = tag.NewKey("message_from")
+	MessageTo, _    = tag.NewKey("message_to")
+	MessageNonce, _ = tag.NewKey("message_nonce")
+	ReceivedFrom, _ = tag.NewKey("received_from")
+)
+
+// Measures
+var (
+	LotusInfo                           = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
+	ChainNodeHeight                     = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
+	ChainNodeWorkerHeight               = stats.Int64("chain/node_worker_height", "Current Height of workers on the node", stats.UnitDimensionless)
+	MessageReceived                     = stats.Int64("message/received", "Counter for total received messages", stats.UnitDimensionless)
+	MessageValidationFailure            = stats.Int64("message/failure", "Counter for message validation failures", stats.UnitDimensionless)
+	MessageValidationSuccess            = stats.Int64("message/success", "Counter for message validation successes", stats.UnitDimensionless)
+	BlockReceived                       = stats.Int64("block/received", "Counter for total received blocks", stats.UnitDimensionless)
+	BlockValidationFailure              = stats.Int64("block/failure", "Counter for block validation failures", stats.UnitDimensionless)
+	BlockValidationSuccess              = stats.Int64("block/success", "Counter for block validation successes", stats.UnitDimensionless)
+	BlockValidationDurationMilliseconds = stats.Float64("block/validation_ms", "Duration for Block Validation in ms", stats.UnitMilliseconds)
+	PeerCount                           = stats.Int64("peer/count", "Current number of FIL peers", stats.UnitDimensionless)
+)
+
+var (
+	InfoView = &view.View{
+		Name:        "info",
+		Description: "Lotus node information",
+		Measure:     LotusInfo,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{Version, Commit},
+	}
+	ChainNodeHeightView = &view.View{
+		Measure:     ChainNodeHeight,
+		Aggregation: view.LastValue(),
+	}
+	ChainNodeWorkerHeightView = &view.View{
+		Measure:     ChainNodeWorkerHeight,
+		Aggregation: view.LastValue(),
+	}
+	BlockReceivedView = &view.View{
+		Measure:     BlockReceived,
+		Aggregation: view.Count(),
+	}
+	BlockValidationFailureView = &view.View{
+		Measure:     BlockValidationFailure,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{FailureType},
+	}
+	BlockValidationSuccessView = &view.View{
+		Measure:     BlockValidationSuccess,
+		Aggregation: view.Count(),
+	}
+	BlockValidationDurationView = &view.View{
+		Measure:     BlockValidationDurationMilliseconds,
+		Aggregation: defaultMillisecondsDistribution,
+	}
+	MessageReceivedView = &view.View{
+		Measure:     MessageReceived,
+		Aggregation: view.Count(),
+	}
+	MessageValidationFailureView = &view.View{
+		Measure:     MessageValidationFailure,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{FailureType},
+	}
+	MessageValidationSuccessView = &view.View{
+		Measure:     MessageValidationSuccess,
+		Aggregation: view.Count(),
+	}
+	PeerCountView = &view.View{
+		Measure:     PeerCount,
+		Aggregation: view.LastValue(),
+	}
+)
+
+// DefaultViews is an array of OpenCensus views for metric gathering purposes
+var DefaultViews = append([]*view.View{
+	InfoView,
+	ChainNodeHeightView,
+	ChainNodeWorkerHeightView,
+	BlockReceivedView,
+	BlockValidationFailureView,
+	BlockValidationSuccessView,
+	BlockValidationDurationView,
+	MessageReceivedView,
+	MessageValidationFailureView,
+	MessageValidationSuccessView,
+	PeerCountView,
+},
+	rpcmetrics.DefaultViews...)
+
+// SinceInMilliseconds returns the duration of time since the provide time as a float64.
+func SinceInMilliseconds(startTime time.Time) float64 {
+	return float64(time.Since(startTime).Nanoseconds()) / 1e6
+}
